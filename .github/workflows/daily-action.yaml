@@ -1,0 +1,48 @@
+name: Data collection
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # This schedule will run the action every day at 00:00 UTC
+
+jobs:
+  run_scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+
+    - name: Install dependencies
+      run: |
+        cd data
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run notion.py
+      run: python data/notion.py
+      env:
+        NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        QDRANT_HOST: ${{ secrets.QDRANT_HOST }}
+        QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+
+    - name: Run crowddev.py
+      run: python data/crowddev.py
+      env:
+        CROWDDEV_API_KEY: ${{ secrets.CROWDDEV_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        QDRANT_HOST: ${{ secrets.QDRANT_HOST }}
+        QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+
+    - name: Run linear.py
+      run: python data/linear.py
+      env:
+        LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        QDRANT_HOST: ${{ secrets.QDRANT_HOST }}
+        QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
