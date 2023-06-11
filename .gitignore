@@ -163,3 +163,8 @@ cython_debug/
 
 **/.env
 **/node_modules
+
+res/test/last-seen.json
+res/test/local.qdrant
+**/.emacs-bu/*
+

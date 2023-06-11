@@ -1,0 +1,66 @@
+{
+  "notion": {
+    "databases": [
+      {
+        "id": "482fa260a9394a4aa20a93508acd659d",
+        "name": "Shared notes"
+      },
+      {
+        "id": "a85e95936d02431ab41b0f71eb701658",
+        "name": "Employee Directory"
+      },
+      {
+        "id": "fe8851a21893481193f1f9de9c3e5184",
+        "name": "User research notes"
+      }
+    ],
+    "pages": [
+      {
+        "id": "2b6281823fc747108b957b3968937248",
+        "doc": "What is crowd.dev"
+      },
+      {
+        "id": "c91a1adde6864c6385fa7607900cf80f",
+        "doc": "Mission"
+      },
+      {
+        "id": "b043987017804f98a742509872ccdb28",
+        "name": "Ways of working"
+      },
+      {
+        "id": "c50d6e854c5e4174b61e545ce59738f8",
+        "name": "Tools"
+      },
+      {
+        "id": "25175a4e7f23410a876105b54f7bb83d",
+        "name": "Admin information"
+      },
+      {
+        "id": "ce89b0b2de6443488a9f8ecc4c8611b7",
+        "name": "Vacation and Sick days"
+      },
+      {
+        "id": "2d75482a29824aaabebc89b3427e6d56",
+        "name": "Expenses"
+      },
+      {
+        "id": "e4877da4c71e43408a2c0a6fac95bef9",
+        "name": "Benefits"
+      },
+      {
+        "id": "6ab2dc24f72743d3af8d936a6628e6d1",
+        "name": "Employee Option Plan"
+      },
+      {
+        "id": "9f5e3c5810f54f3cb452d05b26736be0",
+        "name": "First line customer support"
+      }
+    ]
+  },
+  "local": [
+    {
+      "directory": "res/test/local",
+      "extensions": ["md", "org", "txt"]
+    }
+  ]
+}

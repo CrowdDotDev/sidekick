@@ -1,0 +1,3 @@
+++ Sidekick
+
+Sidekick is a GPT-powered information retrieval system. It embeds pieces of information coming from several sources, stores the embeddings in a vector database, and enables querying based on the embeddings.

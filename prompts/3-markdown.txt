@@ -1,0 +1,23 @@
++= 0-system.txt
+
+When parsing markdown files we want a chunk for each non-heading piece of text.  For example, if the file looks like this:
+
+```
+# heading
+## sub-heading
+This text,
+
+potentially several paragraphs.
+
+### Sub-sub-heading
+
+This other text
+
+## another sub-heading
+
+And yet another text
+```
+
+we would  want an array containing three elements. Each element has the chain of headings that lead to the text, and the text.
+
+Can you write the markdown parser?

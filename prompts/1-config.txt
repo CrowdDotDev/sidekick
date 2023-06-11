@@ -1,0 +1,9 @@
++= 0-system.txt
+
+The code lives in the sidekick package. General configuration values are stored in a ini file.
+
++- res/config-example.ini An example of the configuration file
+
++# Prompt
+
+Can you make an __init__.py file so that the code can access the configuration values in a Config dictionary?

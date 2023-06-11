@@ -1,0 +1,19 @@
++= 0-system.txt
++= 1-source-config.txt
+
+Remember that the configuration for local looks like this:
+
+  "local": [
+    {
+      "directory": "res/example-files",
+      "extensions": ["md", "org"]
+    },
+    {
+      "directory": "another-dir",
+      "extensions": ["md", "txt"]
+    }
+  ]
+
+The sidekick/sources/local.py file implements functionality to go through all the directories defined by the config, recursively look for the files with the right extensions, and parse them.  It will support extensions "md" for markdown, "org" for org-mode, and "txt" or "text" for plain text.
+
+Can you make the local.py file, with a parsing stub for each of the supported formats?

@@ -1,67 +1,10 @@
-import requests
+import os
 import datetime
+
+import requests
 from apis.qdrant import upsert
 from apis.openai import generate_embeddings
 from tqdm import tqdm
-import dotenv
-import os
-
-
-# Replace YOUR_API_KEY with your Linear API key
-api_key = os.environ.get("LINEAR_API_KEY")
-headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-# Set the date after which you want to retrieve issues
-# One day ago in this format (YYYY-MM-DDTHH:mm:ss.sssZ)
-# date_filter = (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat()
-date_filter = "2023-01-01T00:00:00.000Z"
-
-# Convert the date string to a datetime object
-date_filter = datetime.datetime.fromisoformat(date_filter.replace("Z", "+00:00"))
-
-query = """
-query($cursor: String, $pageSize: Int) {
-  issues(first: $pageSize, after: $cursor) {
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    nodes {
-      id
-      title
-      description
-      state {
-        name
-      }
-      estimate
-      priorityLabel
-      creator {
-        name
-      }
-      assignee {
-        name
-      }
-      labels {
-        nodes {
-          name
-        }
-      }
-      cycle {
-        name
-      }
-      createdAt
-      startedAt
-      completedAt
-      canceledAt
-      parent {
-        id
-      }
-      updatedAt
-      url
-    }
-  }
-}
-"""
 
 
 def get_issues(date_filter, cursor=None, page_size=50):
@@ -109,6 +52,12 @@ def get_issues(date_filter, cursor=None, page_size=50):
     }
     """
 
+    api_key = os.environ.get("LINEAR_API_KEY", '')
+    if not api_key:
+        return []
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
     variables = {
         "cursor": cursor,
         "pageSize": page_size,
@@ -118,7 +67,7 @@ def get_issues(date_filter, cursor=None, page_size=50):
     response = requests.post(
         "https://api.linear.app/graphql",
         json={"query": query, "variables": variables},
-        headers=headers,
+        headers=headers
     )
     data = response.json()
 
@@ -131,13 +80,20 @@ def get_issues(date_filter, cursor=None, page_size=50):
             return issues + get_issues(
                 date_filter, cursor=end_cursor, page_size=page_size
             )
-        else:
-            return issues
-    else:
-        raise Exception(f'Error fetching issues: {data.get("errors", "")}')
+        return issues
+    raise RuntimeError(f'Error fetching issues: {data.get("errors", "")}')
 
 
-def main():
+def ingest():
+    # TODO This should be kept as state.
+    # Set the date after which you want to retrieve issues
+    # One day ago in this format (YYYY-MM-DDTHH:mm:ss.sssZ)
+    # date_filter = (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat()
+    date_filter = "2023-01-01T00:00:00.000Z"
+
+    # Convert the date string to a datetime object
+    date_filter = datetime.datetime.fromisoformat(date_filter.replace("Z", "+00:00"))
+
     try:
         issues = get_issues(date_filter)
         for issue in tqdm(issues, total=len(issues)):
@@ -179,4 +135,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    env_file = '.env'
+
+    # We do not want to try to load .env when running as a github action
+    if os.path.exists(env_file):
+        import dotenv
+        dotenv.load_dotenv(env_file)
+
+    ingest()

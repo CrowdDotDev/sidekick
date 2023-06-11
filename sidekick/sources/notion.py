@@ -1,13 +1,12 @@
-import requests
 import os
-import dotenv
+import datetime
+
+import pytz
+import requests
 from apis.openai import generate_embeddings
 from apis.qdrant import upsert
-import datetime
 import tqdm
-import pytz
 
-dotenv.load_dotenv(".env")
 
 DATABASES = [
     "482fa260a9394a4aa20a93508acd659d",  # Shared notes
@@ -28,20 +27,16 @@ PAGES = [
     "9f5e3c5810f54f3cb452d05b26736be0",  # First line customer support
 ]
 
-# Replace with your API key and database ID
-API_KEY = os.environ.get("NOTION_API_KEY")
 
-# Set up the headers for the API request
-headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-    "Notion-Version": "2022-06-28",  # Adjust the version if needed
-}
-
-# Define a function to get all pages from the Notion database
+def get_headers(api_key):
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
 
 
-def get_all_pages(database_id):
+def get_all_pages(database_id, api_key):
     all_pages = []
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
     has_more = True
@@ -54,11 +49,10 @@ def get_all_pages(database_id):
         if next_cursor:
             data["start_cursor"] = next_cursor
 
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=get_headers(api_key), json=data)
 
         if response.status_code != 200:
-            print(response)
-            raise Exception(f"Request failed with status code {response.status_code}")
+            raise RuntimeError(f"Request failed with status code {response.status_code}")
 
         result = response.json()
         all_pages.extend(result["results"])
@@ -71,9 +65,9 @@ def get_all_pages(database_id):
 # Define a function to get a single page's content
 
 
-def get_page_content(page_id):
+def get_page_content(page_id, api_key):
     url = f"https://api.notion.com/v1/blocks/{page_id}/children"
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=get_headers(api_key))
 
     if response.status_code != 200:
         print(response)
@@ -82,9 +76,9 @@ def get_page_content(page_id):
     return response.json()["results"]
 
 
-def get_page(page_id):
+def get_page(page_id, api_key):
     url = f"https://api.notion.com/v1/pages/{page_id}"
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=get_headers(api_key))
 
     if response.status_code != 200:
         print(response)
@@ -93,9 +87,9 @@ def get_page(page_id):
     return response.json()
 
 
-def embed_pages(unfiltered_pages, filterP):
-    if type(unfiltered_pages[0]) == str:
-        unfiltered_pages = [get_page(page_id) for page_id in unfiltered_pages]
+def embed_pages(unfiltered_pages, filterP, api_key):
+    if isinstance(unfiltered_pages[0], str):
+        unfiltered_pages = [get_page(page_id, api_key) for page_id in unfiltered_pages]
 
     now = datetime.datetime.now(datetime.timezone.utc)
     one_day_ago = now - datetime.timedelta(days=1)
@@ -126,7 +120,7 @@ def embed_pages(unfiltered_pages, filterP):
             "platform": "notion",
         }
         try:
-            content = get_page_content(page["id"])
+            content = get_page_content(page["id"], api_key)
             for block in content:
                 if block["object"] == "block" and block["type"] == "paragraph":
                     rich_texts = block["paragraph"]["rich_text"]
@@ -145,10 +139,25 @@ def embed_pages(unfiltered_pages, filterP):
             print("Could not get content for page: ", page["url"])
 
 
-if __name__ == "__main__":
+def ingest():
+    api_key = os.environ.get("NOTION_API_KEY")
+    if not api_key:
+        return
+
     filterP = True
-    embed_pages(PAGES, filterP)
+    embed_pages(PAGES, filterP, api_key)
     for database_id in DATABASES:
         # Get all pages from the database and print their content
-        pages = get_all_pages(database_id)
-        embed_pages(pages, filterP)
+        pages = get_all_pages(database_id, api_key)
+        embed_pages(pages, filterP, api_key)
+
+
+if __name__ == "__main__":
+    env_file = '.env'
+
+    # We do not want to try to load .env when running as a github action
+    if os.path.exists(env_file):
+        import dotenv
+        dotenv.load_dotenv(env_file)
+
+    ingest()

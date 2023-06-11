@@ -1,16 +1,19 @@
-import requests
+import os
 from datetime import datetime, timedelta
+
+import requests
 from apis.openai import generate_embeddings
 from apis.qdrant import upsert
-import os
 from tqdm import tqdm
-import dotenv
-
-dotenv.load_dotenv(".env")
 
 
 def get_activities(lastTimestamp, offset):
-    url = f"https://app.crowd.dev/api/tenant/{os.environ.get('CROWDDEV_TENANT_ID')}/activity/query"
+    tenant_id = os.environ.get('CROWDDEV_TENANT_ID')
+    api_key = os.environ.get('CROWDDEV_API_KEY')
+    if not tenant_id and api_key:
+        return []
+
+    url = f"https://app.crowd.dev/api/tenant/{tenant_id}/activity/query"
 
     payload = {
         "limit": 200,
@@ -24,7 +27,7 @@ def get_activities(lastTimestamp, offset):
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": f"Bearer {os.environ.get('CROWDDEV_API_KEY')}",
+        "authorization": f"Bearer {api_key}",
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -56,6 +59,18 @@ def embed_activities(lastTimestamp, start_offset=0):
         rows = get_activities(lastTimestamp, offset)
 
 
-DATE = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-# DATE = (datetime.now() - timedelta(days=17)).strftime('%Y-%m-%d')
-embed_activities(DATE, start_offset=0)
+def ingest():
+    DATE = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    # DATE = (datetime.now() - timedelta(days=17)).strftime('%Y-%m-%d')
+    embed_activities(DATE, start_offset=0)
+
+
+if __name__ == '__main__':
+    env_file = '.env'
+
+    # We do not want to try to load .env when running as a github action
+    if os.path.exists(env_file):
+        import dotenv
+        dotenv.load_dotenv(env_file)
+
+    ingest()

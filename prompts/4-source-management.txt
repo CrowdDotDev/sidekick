@@ -1,0 +1,63 @@
++= 0-system.txt
+
+A source unit can be a file, a notion page, a linear issue, or a slack message.  Each source unit has an id (file name, notion id, etc).
+
+Each source has a name: local, notion, linear, crowddev.
+
+Notion and local have subsources: notion databases and pages, and local directories, like this
+
+Config = {
+  "notion": {
+    "databases": [
+      {
+        "id": "482fa260a9394a4aa20a93508acd659d",
+        "name": "Shared notes"
+      },
+      {
+        "id": "fe8851a21893481193f1f9de9c3e5184",
+        "name": "User research notes"
+      }
+    ],
+    "pages": [
+      {
+        "id": "2b6281823fc747108b957b3968937248",
+        "doc": "What is crowd.dev"
+      },
+      {
+        "id": "9f5e3c5810f54f3cb452d05b26736be0",
+        "name": "First line customer support"
+      }
+    ]
+  },
+  "local": [
+    {
+      "directory": "res/test/local",
+      "extensions": ["md", "org", "txt"]
+    },
+    {
+      "directory": "another/dir",
+      "extensions": ["md", "org", "txt"]
+    }
+  ]
+}
+
+Linear has a single subsource "issues", and crowdev has a single subsource "slack".
+
+We need a local database to store the last time we have seen each subsource. It can be a json file.  It will look like this:
+
+{
+"notion": {id: datetime, ...},
+"local": {directory: datetime, ...},
+"linear": {"issues": datetime},
+"crowddev": {"slack": datetime}
+}
+
+state.py manages the database. It has to be reasonably efficient. It has two functions:
+
+- given a source and subsource return the last time it was seen, or None if it has not been seen;
+
+- update the last time a subsource has been seen to now.
+
++# Prompt
+
+Can you make state.py?

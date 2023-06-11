@@ -21,10 +21,10 @@ jobs:
       run: |
         cd data
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -e .
 
     - name: Run notion.py
-      run: python data/notion.py
+      run: python data/sidekick/sources/notion.py
       env:
         NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -32,7 +32,7 @@ jobs:
         QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
 
     - name: Run crowddev.py
-      run: python data/crowddev.py
+      run: python data/sidekick/sources/crowddev.py
       env:
         CROWDDEV_API_KEY: ${{ secrets.CROWDDEV_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -40,7 +40,7 @@ jobs:
         QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
 
     - name: Run linear.py
-      run: python data/linear.py
+      run: python data/sidekick/sources/linear.py
       env:
         LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
