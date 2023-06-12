@@ -6,9 +6,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
-from sidekick import load_environment, Config
-
-C = Config['qdrant']
+import sidekick.tools as T
 
 QClient = None
 
@@ -16,15 +14,16 @@ QClient = None
 def get_qdrant_client():
     global QClient
     if QClient is None:
-        load_environment()
-        if C['QDRANT_LOCAL_DB']:
-            client_pars = {'path': C['QDRANT_LOCAL_DB']}
-        elif C['QDRANT_URL']:
-            client_pars = {'url': C['QDRANT_LOCAL_DB'],
+        T.load_environment()
+        C = T.get_config('qdrant')
+        if C['qdrant_local_db']:
+            client_pars = {'path': C['qdrant_local_db']}
+        elif C['qdrant_url']:
+            client_pars = {'url': C['qdrant_local_db'],
                            'api_key': os.environ['QDRANT_API_KEY']}
         else:
-            raise RuntimeError('Need either QDRANT_LOCAL_DB or '
-                               'QDRANT_LOCAL_DB in config')
+            raise RuntimeError('Need either qdrant_local_db or '
+                               'qdrant_local_db in config')
 
         QClient = QdrantClient(**client_pars)
 
@@ -33,25 +32,33 @@ def get_qdrant_client():
 
 def create_collection():
     client = get_qdrant_client()
+
+    C = T.get_config('qdrant')
+    C_oai = T.get_config('openai')
+
     client.recreate_collection(
-        collection_name=C['QDRANT_COLLECTION'],
-        vectors_config=VectorParams(size=Config['openai']['OAI_EMBEDDING_DIMENSIONS'],
+        collection_name=C['qdrant_collection'],
+        vectors_config=VectorParams(size=C_oai['oai_embedding_dimensions'],
                                     distance=Distance.COSINE))
 
-    client.create_payload_index(collection_name=C['QDRANT_COLLECTION'],
-                                field_name=C['QDRANT_SUID_FIELD'],
+    client.create_payload_index(collection_name=C['qdrant_collection'],
+                                field_name=C['qdrant_suid_field'],
                                 field_schema="keyword")
 
 
 def count():
     client = get_qdrant_client()
-    return client.count(collection_name=C['QDRANT_COLLECTION'],
+
+    C = T.get_config('qdrant')
+    return client.count(collection_name=C['qdrant_collection'],
                         exact=True).count
 
 
 def search(query_vector, limit=5):
     client = get_qdrant_client()
-    out = client.search(collection_name=C['QDRANT_COLLECTION'],
+
+    C = T.get_config('qdrant')
+    out = client.search(collection_name=C['qdrant_collection'],
                         query_vector=query_vector,
                         limit=limit)
     return [r.payload for r in out]
@@ -63,7 +70,9 @@ def clean_source_unit(source_unit_id):
     # delete all the points belonging to this source_unit_id if any
     # exists
     client = get_qdrant_client()
-    client.delete(collection_name=C['QDRANT_COLLECTION'],
+
+    C = T.get_config('qdrant')
+    client.delete(collection_name=C['qdrant_collection'],
                   points_selector=Filter(must=[
-                      FieldCondition(key=C['QDRANT_SUID_FIELD'],
+                      FieldCondition(key=C['qdrant_suid_field'],
                                      match=MatchValue(value=source_unit_id))]))

@@ -3,7 +3,8 @@
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 
-from sidekick.sources import combine_headings
+import sidekick.tools as T
+from sidekick.payload import Payload
 
 
 class CustomMarkdownRenderer(MarkdownRenderer):
@@ -22,15 +23,37 @@ class CustomMarkdownRenderer(MarkdownRenderer):
 
     def paragraph(self, token, state) -> str:
         text = self.render_children(token, state)
-        self.chunks.append(combine_headings(list(self.current_heading_chain), text))
+        self.chunks.append(Payload(body=text,
+                                   headings=list(self.current_heading_chain)))
         return ''
 
 
-def parse(file_path):
-    with open(file_path, 'r') as file:
+def parse(file_path, uri, timestamp, platform):
+    with open(file_path, 'r', encoding='utf-8') as file:
         markdown_text = file.read()
 
     renderer = CustomMarkdownRenderer()
     mistune.create_markdown(renderer=renderer)(markdown_text)
 
-    return renderer.chunks
+    out = renderer.chunks
+    for chunk in out:
+        chunk.source_unit_id = uri
+        chunk.uri = T.append_anchor_to_uri(uri, chunk.headings)
+        chunk.timestamp = timestamp
+        chunk.platform = platform
+
+    return out
+
+
+def main():
+    chunks = parse('res/test/local/butterfly-biology.md',
+                   'file://res/test/local/butterfly-biology.md',
+                   None,
+                   'local:altair.local')
+
+    from pprint import pprint
+    pprint(chunks)
+
+
+if __name__ == '__main__':
+    main()

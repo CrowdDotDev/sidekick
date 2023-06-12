@@ -2,10 +2,11 @@
 
 import re
 
-from sidekick.sources import combine_headings
+import sidekick.tools as T
+from sidekick.payload import Payload
 
 
-def parse(file_path):
+def parse(file_path, uri, timestamp, platform):
     with open(file_path, 'r', encoding='utf-8') as file:
         org_lines = file.readlines()
 
@@ -22,10 +23,13 @@ def parse(file_path):
             # If there's text accumulated, save it as a new chunk
             text_so_far = ' '.join(current_text).strip()
             if text_so_far:
-                chunks.append({
-                    'headings': list(current_heading_chain),
-                    'text': text_so_far
-                })
+                chunks.append(
+                    Payload(body=text_so_far,
+                            source_unit_id=uri,
+                            uri=T.append_anchor_to_uri(uri, current_heading_chain[-1]),
+                            headings=list(current_heading_chain),
+                            platform=platform,
+                            timestamp=timestamp))
                 current_text = []
 
             # Adjust the current heading chain to match the new level and heading
@@ -36,9 +40,13 @@ def parse(file_path):
 
     # Don't forget the last chunk
     if current_text:
-        chunks.append({
-            'headings': list(current_heading_chain),
-            'text': ' '.join(current_text).strip()
-        })
 
-    return [combine_headings(**chunk) for chunk in  chunks]
+        chunks.append(
+            Payload(body=' '.join(current_text).strip(),
+                    source_unit_id=uri,
+                    uri=T.append_anchor_to_uri(uri, current_heading_chain[-1]),
+                    headings=list(current_heading_chain),
+                    platform=platform,
+                    timestamp=timestamp))
+
+    return chunks

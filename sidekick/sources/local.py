@@ -2,13 +2,13 @@
 
 import os
 from datetime import datetime
+import socket
 from pytz import utc
 
+import sidekick.tools as T
 from sidekick.sources.state import State
-from sidekick.embed import embed
-from sidekick.apis import qdrant
+from sidekick.embed import embed_source_unit
 
-from sidekick.sources import SourceConfig
 from sidekick.sources import markdown
 from sidekick.sources import orgmode
 from sidekick.sources import plain
@@ -25,10 +25,12 @@ def ingest():
         "text": plain.parse,
     }
 
-    embedded = []
+    embedded_payloads = []
     source_name = 'local'
+    hostname = socket.gethostname()
+
     # pylint: disable=too-many-nested-blocks
-    for source in SourceConfig.get(source_name, []):
+    for source in T.get_source_config(source_name, []):
         directory = source['directory']
 
         extensions = source.get('extensions', supported_extensions)
@@ -45,19 +47,18 @@ def ingest():
                     last_seen_dt = state.get_last_seen(source_name, file_path)
 
                     if last_seen_dt is None or file_modified_dt > last_seen_dt:
+                        uri = T.file_to_uri(file_path)
                         parser = parsers[file_extension]
-                        chunks = parser(file_path)
-                        text_embeddings = []
-                        qdrant.clean_source_unit(source_unit_id=file_path)
-                        for chunk in chunks:
-                            text_embeddings += embed(chunk, source_unit_id=file_path)
-                        embedded.append({'file_path': file_path,
-                                         'texts': [t_e['text']
-                                                   for t_e in text_embeddings]})
+                        payloads = parser(file_path,
+                                          uri=uri,
+                                          timestamp=file_modified_dt,
+                                          platform=source_name + ':' + hostname)
+                        embed_source_unit(payloads,
+                                          source_unit_id=file_path)
+                        state.update_last_seen(source_name, file_path)
+                        embedded_payloads += payloads
 
-                    state.update_last_seen(source_name, file_path)
-
-    return embedded
+    return embedded_payloads
 
 
 def main():

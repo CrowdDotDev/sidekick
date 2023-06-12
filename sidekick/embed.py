@@ -9,11 +9,9 @@ import tiktoken
 
 from numpy import array, average
 
-from sidekick import Config
+import sidekick.tools as T
 from sidekick.apis.oai import get_embeddings
-from sidekick.apis.qdrant import get_qdrant_client
-
-C = Config['openai']
+from sidekick.apis import qdrant
 
 
 # Split a text into smaller chunks of size n, preferably ending at the
@@ -59,63 +57,73 @@ def get_col_average_from_list_of_lists(list_of_lists):
     return average_embedding.tolist()
 
 
-def create_embeddings(text, tokenizer=None):
-    """Return a list of tuples (text_chunk, embedding) and an average
-    embedding for a text."""
-    tokenizer = tokenizer or tiktoken.get_encoding(C['OAI_EMBEDDING_ENCODING'])
+def create_embeddings(text, include_full_text_if_chunked=False, tokenizer=None):
+    """Returns a list of tuples (text_chunk, vector).  If
+    include_full_text_if_chunked is True it will add an embedding for
+    the full text when it has been chunked.
+    """
+
+    C = T.get_config('openai')
+    tokenizer = tokenizer or tiktoken.get_encoding(C['oai_embedding_encoding'])
 
     # Should just return the number of tokens and the text chunks
     token_chunks, text_chunks = list(zip(*chunks(re.sub('\n+','\n', text),
-                                                 C['OAI_EMBEDDING_CHUNK_SIZE'],
+                                                 C['oai_embedding_chunk_size'],
                                                  tokenizer)))
 
     # Split text_chunks into shorter arrays of max length 100
-    text_chunks_arrays = [text_chunks[i:i+C['OAI_MAX_TEXTS_TO_EMBED_BATCH_SIZE']]
+    text_chunks_arrays = [text_chunks[i:i+C['oai_max_texts_to_embed_batch_size']]
                           for i in range(0, len(text_chunks),
-                                         C['OAI_MAX_TEXTS_TO_EMBED_BATCH_SIZE'])]
+                                         C['oai_max_texts_to_embed_batch_size'])]
 
     # Call get_embeddings for each shorter array and combine the results
     embeddings = []
     for text_chunks_array in text_chunks_arrays:
         embeddings += get_embeddings(text_chunks_array)
 
-    text_embeddings = [{'text': t,
-                        'embedding': e}
-                       for t, e in (zip(text_chunks, embeddings))]
+    text_vectors = [{'text': t,
+                     'vector': e}
+                    for t, e in (zip(text_chunks, embeddings))]
 
-    if len(text_embeddings) > 1:
+    if include_full_text_if_chunked and len(text_vectors) > 1:
         total_tokens = sum(len(chunk) for chunk in token_chunks)
-        if total_tokens >= C['OAI_EMBEDDING_CTX_LENGTH']:
+        if total_tokens >= C['oai_embedding_ctx_length']:
             average_embedding = get_col_average_from_list_of_lists(embeddings)
         else:
             average_embedding = get_embeddings(['\n\n'.join(text_chunks)])[0]
-        text_embeddings.append({'text': text,
-                                'embedding': average_embedding})
+        text_vectors.append({'text': text,
+                             'vector': average_embedding})
 
-    return text_embeddings
+    return text_vectors
 
 
 def make_id(source_unit_id, text):
     return str(uuid.uuid5(uuid.NAMESPACE_X500, source_unit_id + text))
 
 
-def embed(text, source_unit_id):
+def embed_source_unit(payloads, source_unit_id):
     """The source_unit_id is the id of the atomic source unit. If the
     source is notion, for example, the atomic source unit is the
     document, and the source_unit_id would be the document id. If the
     source is local the source unit is the file (in most cases) and
     the source unit id will be the file name.
     """
-    Cq = Config['qdrant']
-    q_client = get_qdrant_client()
+    q_client = qdrant.get_qdrant_client()
+    C = T.get_config('qdrant')
 
-    text_embeddings = create_embeddings(text)
-    q_client.upsert(
-        collection_name=Cq['QDRANT_COLLECTION'],
-        points=[PointStruct(id=make_id(source_unit_id, t_e['text']),
-                            vector=t_e['embedding'],
-                            payload={Cq['QDRANT_SUID_FIELD']: source_unit_id,
-                                     Cq['QDRANT_TEXT_FIELD']: t_e['text']})
-                for t_e in text_embeddings])
+    qdrant.clean_source_unit(source_unit_id)
 
-    return text_embeddings
+    points = []
+
+    for payload in payloads:
+        for text_vector in create_embeddings(payload.body):
+            payload_copy = payload.copy()
+            payload_copy.update({'body': text_vector['text']})
+            points.append(PointStruct(id=make_id(source_unit_id,
+                                                text_vector['text']),
+                                      vector=text_vector['vector'],
+                                      payload=payload_copy))
+    q_client.upsert(collection_name=C['qdrant_collection'],
+                    points=points)
+
+    return points
