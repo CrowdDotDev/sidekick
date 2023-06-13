@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime
+from typing import Any, Dict
+
 import mistune
 from mistune.renderers.markdown import MarkdownRenderer
 
 import sidekick.tools as T
-from sidekick.payload import Payload
+from sidekick.payload import Payload, FactType
 
 
 class CustomMarkdownRenderer(MarkdownRenderer):
@@ -28,28 +31,45 @@ class CustomMarkdownRenderer(MarkdownRenderer):
         return ''
 
 
-def parse(file_path, uri, timestamp, platform):
+def parse(file_path: str,
+          uri: str,
+          source: str,
+          author: str,
+          fact_type: FactType,
+          timestamp: datetime,
+          metadata: Dict[str, Any] = None):
+
     with open(file_path, 'r', encoding='utf-8') as file:
         markdown_text = file.read()
 
     renderer = CustomMarkdownRenderer()
     mistune.create_markdown(renderer=renderer)(markdown_text)
 
+    anchors_so_far = {}
+
     out = renderer.chunks
-    for chunk in out:
-        chunk.source_unit_id = uri
-        chunk.uri = T.append_anchor_to_uri(uri, chunk.headings)
-        chunk.timestamp = timestamp
-        chunk.platform = platform
+    for payload in out:
+        payload.source_unit_id = uri
+
+        anchor, anchors_so_far = T.generate_anchor(payload.headings, anchors_so_far)
+        payload.uri = uri + anchor
+        payload.author = author
+        payload.source = source
+        payload.fact_type = FactType(fact_type)
+        payload.timestamp = timestamp
+        payload.metadata = (metadata or {}).copy()
 
     return out
 
 
 def main():
-    chunks = parse('res/test/local/butterfly-biology.md',
-                   'file://res/test/local/butterfly-biology.md',
-                   None,
-                   'local:altair.local')
+    fname = 'res/test/local/butterfly-biology.md'
+    chunks = parse(fname,
+                   T.file_to_uri(fname),
+                   source='local:altair.local',
+                   author='Author',
+                   fact_type=FactType.reference,
+                   timestamp=T.timestamp_as_utc())
 
     from pprint import pprint
     pprint(chunks)

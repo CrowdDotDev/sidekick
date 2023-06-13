@@ -6,9 +6,10 @@ import socket
 from pytz import utc
 
 import sidekick.tools as T
-from sidekick.sources.state import State
+from sidekick.payload import FactType
 from sidekick.embed import embed_source_unit
 
+from sidekick.sources.state import State
 from sidekick.sources import markdown
 from sidekick.sources import orgmode
 from sidekick.sources import plain
@@ -32,6 +33,8 @@ def ingest():
     # pylint: disable=too-many-nested-blocks
     for source in T.get_source_config(source_name, []):
         directory = source['directory']
+        author = source['author']
+        fact_type = FactType(source['fact_type'])
 
         extensions = source.get('extensions', supported_extensions)
         for dirpath, _, filenames in os.walk(directory):
@@ -49,10 +52,17 @@ def ingest():
                     if last_seen_dt is None or file_modified_dt > last_seen_dt:
                         uri = T.file_to_uri(file_path)
                         parser = parsers[file_extension]
-                        payloads = parser(file_path,
-                                          uri=uri,
-                                          timestamp=file_modified_dt,
-                                          platform=source_name + ':' + hostname)
+                        payloads = parser(
+                            file_path,
+                            uri=uri,
+                            source=source_name + ':' + hostname,
+                            author=author,
+                            fact_type=fact_type,
+                            timestamp=file_modified_dt,
+                            metadata={
+                                'directory': directory,
+                                'parsed-on': T.timestamp_as_utc().isoformat()})
+
                         embed_source_unit(payloads,
                                           source_unit_id=file_path)
                         state.update_last_seen(source_name, file_path)
@@ -64,10 +74,7 @@ def ingest():
 def main():
     embedded = ingest()
     print('Ingested from:')
-    print('  ' + '\n  '.join([e['file_path'] for e in embedded]))
-
-    # from pprint import pprint
-    # pprint(embedded)
+    print('  ' + '\n  '.join([e.uri for e in embedded]))
 
 
 if __name__ == "__main__":

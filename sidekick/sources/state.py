@@ -11,7 +11,6 @@ import sidekick.tools as T
 class State:
     def __init__(self, db_path=None):
         C = T.get_config('state')
-        print(C)
         self.db_path = db_path or C['last_seen_db']
 
         if os.path.exists(self.db_path):

@@ -86,7 +86,7 @@ def load_environment():
 
 def timestamp_as_utc(timestamp: Union[datetime.datetime, str] = None) -> datetime.datetime:
     if timestamp:
-        if not isinstance(timestamp, datetime.datetime):
+        if not isinstance(timestamp, (str, datetime.datetime)):
             raise ValueError("timestamp must be a string in ISO 8601 "
                              "format or a datetime object.")
 
@@ -121,9 +121,22 @@ def uri_to_file_path(uri):
     return os.path.abspath(urllib.request.url2pathname(path))
 
 
-def append_anchor_to_uri(uri: str, headings: List[str] = None) -> str:
+def generate_anchor(headings: List[str] = None,
+                    prev_anchors: Dict[str, int] = None) -> str:
     """Where headings is a list of headings, from highest to lowest level.
+
+    When an anchor is repeated in a file we append a number to the
+    end. This is apparently what github does.
     """
+    prev_anchors_copy = prev_anchors.copy()
+    anchor_number = ''
     if headings:
-        return uri + '#' + urllib.parse.quote(headings[-1])
-    return uri
+        anchor = urllib.parse.quote(headings[-1])
+        if anchor in prev_anchors:
+            # The first repeated anchor has a -2 appended.
+            prev_anchors_copy[anchor] += 1
+            anchor_number = '-' + str(prev_anchors[anchor])
+        else:
+            prev_anchors_copy[anchor] = 1
+
+    return (('#' + anchor + anchor_number) if anchor else ''), prev_anchors_copy

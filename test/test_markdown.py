@@ -8,8 +8,11 @@ def test_parse():
     file_path = 'res/test/local/butterfly-biology.md'
     payloads = markdown.parse(file_path,
                               uri=T.file_to_uri(file_path),
-                              timestamp=None,
-                              platform='local')
+                              source='local:hostname',
+                              author='Unknown',
+                              fact_type='reference',
+                              timestamp=T.timestamp_as_utc().isoformat(),
+                              metadata={'testing': True})
 
     assert payloads[0].headings == ['Butterflies', 'Anatomy of a Butterfly', 'Wings']
     assert payloads[0].body == (

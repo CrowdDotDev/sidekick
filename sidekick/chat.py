@@ -1,26 +1,44 @@
 # -*- coding: utf-8 -*-
 
 
-from sidekick import Config
+import sidekick.tools as T
 from sidekick.apis import oai, qdrant
 
 
-def format_context(ctx):
+def format_context(payload_dict):
     ctx_list = ['```']
-    for field in ('uri', 'timestamp', 'title', 'source'):
-        if field in ctx:
-            ctx_list.append(field + ': ' + ctx[field])
-    ctx_list.append('content: ' + ctx['text'])
+
+    uri = payload_dict.get('uri', '')
+    if uri:
+        ctx_list.append('url_or_file: ' + (T.uri_to_file_path(uri) if uri.startswith('file:')
+                                           else uri))
+
+    for field in ('source', 'author', 'fact_type', 'timestamp'):
+        value = payload_dict.get(field, '')
+        if value:
+            ctx_list.append(field + ': ' + str(value))
+
+    headings = payload_dict.get('headings', [])
+    if headings:
+        ctx_list.append('breadcrumbs: ' + ' > '.join(headings))
+
+    body = payload_dict.get('body', '')
+    if body:
+        ctx_list.append('body: ' + body)
+
     ctx_list.append('```')
 
     return '\n'.join(ctx_list)
 
 
 def process_question(question):
-    with open(Config['openai']['OAI_SYSTEM_PROMPT'], encoding='utf-8') as fin:
+    C = T.get_config('openai')
+
+    with open(C['oai_system_prompt'], encoding='utf-8') as fin:
         system_prompt = fin.read()
 
-    all_context = qdrant.search(oai.get_embeddings([question])[0])
+    all_context = qdrant.search(oai.get_embeddings([question])[0],
+                                limit=C['oai_n_chunks_for_context'])
 
     user_prompt = '\n\n'.join(['# Context:',
                                '\n'.join([format_context(ctx) for ctx in all_context]),
@@ -31,7 +49,11 @@ def process_question(question):
     return answer
 
 
-if __name__ == '__main__':
+def main():
     import sys
     question = sys.argv[1]
     print(process_question(question))
+
+
+if __name__ == '__main__':
+    main()

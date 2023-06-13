@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from enum import Enum
+
 from typing import Any, Dict, List, Union
 
 import sidekick.tools as T
+
+
+class FactType(str, Enum):
+    reference = 'reference'
+    historical = 'historical'
 
 
 class Payload(dict):
@@ -12,7 +19,9 @@ class Payload(dict):
                  source_unit_id: str = None,
                  uri: str = None,
                  headings: List[str] = None,
-                 platform: str = '',
+                 author: str = None,
+                 source: str = '',
+                 fact_type: FactType = FactType.historical,
                  timestamp: Union[datetime.datetime, str] = None,
                  metadata: Dict[str, Any] = None):
         super().__init__()
@@ -24,8 +33,10 @@ class Payload(dict):
         self.uri = uri
         self.timestamp = timestamp
 
-        self['headings'] = headings
-        self['platform'] = platform
+        self['headings'] = headings or []
+        self['author'] = author
+        self['source'] = source
+        self['fact_type'] = fact_type
         self['metadata'] = metadata or {}
 
     def __getattr__(self, name):
@@ -35,8 +46,13 @@ class Payload(dict):
 
     def __setattr__(self, name, value):
         if name == 'timestamp':
-            self[name] = T.timestamp_as_utc(value).isoformat()
+            value = T.timestamp_as_utc(value).isoformat()
         elif name == 'uri':
-            self[name] = T.validate_uri(value)
-        else:
-            self[name] = value
+            value = T.validate_uri(value)
+        elif name == 'headings':
+            if isinstance(value, tuple):
+                value = list(value)
+            elif not isinstance(value, list):
+                value = [value]
+
+        self[name] = value

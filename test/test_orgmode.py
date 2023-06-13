@@ -8,9 +8,11 @@ def test_orgmode_parse():
     file_path = 'res/test/local/org/trees.org'
     payloads = orgmode.parse(file_path,
                              uri=T.file_to_uri(file_path),
-                             timestamp=None,
-                             platform='local')
-
+                             source='local:hostname',
+                             author='Unknown',
+                             fact_type='reference',
+                             timestamp=T.timestamp_as_utc().isoformat(),
+                             metadata={'testing': True})
 
     assert [payload.headings for payload in payloads] == [
         ['Trees'],
