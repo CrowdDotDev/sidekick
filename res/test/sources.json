@@ -76,6 +76,11 @@
       "extensions": ["md", "org", "txt"],
       "author": "unknown",
       "fact_type": "reference"
+    },
+    {
+      "directory": "res/test/local/short",
+      "author": "John Doe",
+      "fact_type": "historical"
     }
   ]
 }

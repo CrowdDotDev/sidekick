@@ -27,11 +27,11 @@ def test_local():
     update_modification_time(source_config[0]['directory'])
 
     embedded = ingest()
-    assert qdrant.count() == 39  # A long payload has been divided in two
-    assert len(embedded) == 38
+    assert qdrant.count() == 40  # A long payload has been divided in two
+    assert len(embedded) == 39
 
     time.sleep(1.1)
 
     embedded = ingest()
-    assert qdrant.count() == 39
+    assert qdrant.count() == 40
     assert len(embedded) == 0

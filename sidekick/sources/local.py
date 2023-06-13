@@ -15,7 +15,7 @@ from sidekick.sources import orgmode
 from sidekick.sources import plain
 
 
-def ingest():
+def ingest(only_in_directory=None):
     state = State()
     supported_extensions = ["md", "org", "txt", "text"]
 
@@ -33,6 +33,9 @@ def ingest():
     # pylint: disable=too-many-nested-blocks
     for source in T.get_source_config(source_name, []):
         directory = source['directory']
+        if only_in_directory is not None and directory != only_in_directory:
+            continue
+
         author = source['author']
         fact_type = FactType(source['fact_type'])
 
@@ -59,9 +62,7 @@ def ingest():
                             author=author,
                             fact_type=fact_type,
                             timestamp=file_modified_dt,
-                            metadata={
-                                'directory': directory,
-                                'parsed-on': T.timestamp_as_utc().isoformat()})
+                            metadata={'directory': directory})
 
                         embed_source_unit(payloads,
                                           source_unit_id=file_path)

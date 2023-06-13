@@ -2,6 +2,7 @@
 
 
 import sidekick.tools as T
+from sidekick.payload import FactType
 from sidekick.apis import oai, qdrant
 
 
@@ -10,13 +11,15 @@ def format_context(payload_dict):
 
     uri = payload_dict.get('uri', '')
     if uri:
-        ctx_list.append('url_or_file: ' + (T.uri_to_file_path(uri) if uri.startswith('file:')
-                                           else uri))
+        ctx_list.append('url_or_file: ' +
+                        (T.uri_to_file_path(uri) if uri.startswith('file:')
+                         else uri))
 
     for field in ('source', 'author', 'fact_type', 'timestamp'):
         value = payload_dict.get(field, '')
         if value:
-            ctx_list.append(field + ': ' + str(value))
+            ctx_list.append(field + ': ' + (value.value if isinstance(value, FactType)
+                                            else str(value)))
 
     headings = payload_dict.get('headings', [])
     if headings:
