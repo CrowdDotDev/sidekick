@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import sidekick.tools as T
 from sidekick.payload import FactType
 from sidekick.apis import oai, qdrant
