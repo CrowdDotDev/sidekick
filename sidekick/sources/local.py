@@ -64,10 +64,11 @@ def ingest(only_in_directory=None):
                             timestamp=file_modified_dt,
                             metadata={'directory': directory})
 
-                        embed_source_unit(payloads,
-                                          source_unit_id=file_path)
-                        state.update_last_seen(source_name, file_path)
+                        embed_source_unit(payloads, source_unit_id=file_path)
                         embedded_payloads += payloads
+
+                    state.update_last_seen(source_name, file_path)
+
 
     return embedded_payloads
 

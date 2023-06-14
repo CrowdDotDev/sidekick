@@ -19,7 +19,8 @@ class Payload(dict):
                  source_unit_id: str = None,
                  uri: str = None,
                  headings: List[str] = None,
-                 author: str = None,
+                 created_by: str = None,
+                 last_edited_by: str = None,
                  source: str = '',
                  fact_type: FactType = FactType.historical,
                  timestamp: Union[datetime.datetime, str] = None,
@@ -34,7 +35,8 @@ class Payload(dict):
         self.timestamp = timestamp
 
         self['headings'] = headings or []
-        self['author'] = author
+        self['created_by'] = created_by
+        self['last_edited_by'] = last_edited_by or created_by
         self['source'] = source
         self['fact_type'] = fact_type
         self['metadata'] = metadata or {}

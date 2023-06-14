@@ -53,7 +53,7 @@ def parse(file_path: str,
 
         anchor, anchors_so_far = T.generate_anchor(payload.headings, anchors_so_far)
         payload.uri = uri + anchor
-        payload.author = author
+        payload.created_by = author
         payload.source = source
         payload.fact_type = FactType(fact_type)
         payload.timestamp = timestamp
