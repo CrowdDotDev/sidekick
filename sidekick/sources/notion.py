@@ -11,7 +11,6 @@ from sidekick.payload import Payload, FactType
 from sidekick.embed import embed_source_unit
 from sidekick.sources.state import State
 
-
 SourceName = 'notion'
 Timeout = 15
 

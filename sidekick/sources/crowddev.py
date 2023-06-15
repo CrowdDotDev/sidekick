@@ -7,11 +7,9 @@ from typing import Dict, List
 import requests
 
 import sidekick.tools as T
-
 from sidekick.payload import Payload, FactType
 from sidekick.embed import embed_source_unit
 from sidekick.sources.state import State
-
 
 SourceName = 'crowddev'
 

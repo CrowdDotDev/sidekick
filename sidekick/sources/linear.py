@@ -1,13 +1,26 @@
+# -*- coding: utf-8 -*-
+
+
 import os
-import datetime
+from datetime import datetime
+from typing import Dict, List
 
 import requests
-from apis.qdrant import upsert
-from apis.openai import generate_embeddings
-from tqdm import tqdm
+
+import sidekick.tools as T
+from sidekick.payload import Payload, FactType
+from sidekick.embed import embed_source_unit
+from sidekick.sources.state import State
+
+SourceName = 'linear'
 
 
-def get_issues(date_filter, cursor=None, page_size=50):
+def get_issues(from_timestamp: datetime,
+               cursor: str = None,
+               page_size: int = 50):
+    T.load_dotenv()
+
+    # TODO Should we add the title to the parent, and use it as a heading?
     query = """
     query GetIssues($cursor: String, $pageSize: Int, $updatedAfter: DateTime) {
         issues(first: $pageSize, after: $cursor, filter: {updatedAt:{ gt: $updatedAfter}}) {
@@ -59,15 +72,20 @@ def get_issues(date_filter, cursor=None, page_size=50):
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
     variables = {
-        "cursor": cursor,
         "pageSize": page_size,
-        "updatedAfter": date_filter.isoformat(),
+        # TODO: this will include the timezone, is it going to work?
+        "updatedAfter": from_timestamp.isoformat(),
     }
+
+    # TODO: I assume that when cursor is None we should not add it?
+    if cursor is not None:
+        variables['cursor'] = cursor
 
     response = requests.post(
         "https://api.linear.app/graphql",
         json={"query": query, "variables": variables},
-        headers=headers
+        headers=headers,
+        timeout=15
     )
     data = response.json()
 
@@ -76,70 +94,55 @@ def get_issues(date_filter, cursor=None, page_size=50):
         end_cursor = data["data"]["issues"]["pageInfo"]["endCursor"]
         has_next_page = data["data"]["issues"]["pageInfo"]["hasNextPage"]
 
+        ingest_issues(issues)
+
         if has_next_page:
             return issues + get_issues(
-                date_filter, cursor=end_cursor, page_size=page_size
+                from_timestamp, cursor=end_cursor, page_size=page_size
             )
         return issues
     raise RuntimeError(f'Error fetching issues: {data.get("errors", "")}')
 
 
-def ingest():
-    # TODO This should be kept as state.
-    # Set the date after which you want to retrieve issues
-    # One day ago in this format (YYYY-MM-DDTHH:mm:ss.sssZ)
-    # date_filter = (datetime.datetime.now() - datetime.timedelta(days=1)).isoformat()
-    date_filter = "2023-01-01T00:00:00.000Z"
+def ingest_issues(issues: List[Dict]):
+    payloads = []
 
-    # Convert the date string to a datetime object
-    date_filter = datetime.datetime.fromisoformat(date_filter.replace("Z", "+00:00"))
+    for issue in issues:
+        labels = ", ".join([label["name"] for label in issue["labels"]["nodes"]])
+        creator = issue["creator"]["name"] if issue["creator"] else "N/A"
+        assignee = issue["assignee"]["name"] if issue["assignee"] else "N/A"
+        parent_id = issue["parent"]["id"] if issue["parent"] else "N/A"
 
-    try:
-        issues = get_issues(date_filter)
-        for issue in tqdm(issues, total=len(issues)):
-            print(issue)
-            labels = ", ".join([label["name"] for label in issue["labels"]["nodes"]])
-            creator = issue["creator"]["name"] if issue["creator"] else "N/A"
-            assignee = issue["assignee"]["name"] if issue["assignee"] else "N/A"
-            parent_id = issue["parent"]["id"] if issue["parent"] else "N/A"
-
-            payload = {
-                "url": issue["url"],
-                "timestamp": issue["updatedAt"],
-                "title": issue["title"],
-                "body": issue["description"] if issue["description"] else "",
-                "platform": "linear",
-                "member": creator,
-                "attributes": {
-                    "status": issue["state"]["name"],
+        metadata = {"status": issue["state"]["name"],
                     "estimate": issue["estimate"],
                     "priority": issue["priorityLabel"],
                     "labels": labels,
                     "cycle": issue["cycle"]["name"] if issue["cycle"] else "N/A",
                     "created": issue["createdAt"],
                     "assignee": assignee,
-                    "parent": parent_id,
-                },
-            }
+                    "parent": parent_id,}
 
-            print(payload)
+        payloads.append(Payload(issue['description'] if issue['description'] else '',
+                                source_unit_id=issue['id'],
+                                uri=issue['url'],
+                                headings=[],
+                                created_by=creator,
+                                source=SourceName,
+                                fact_type=FactType.historical,
+                                timestamp=issue["updatedAt"],
+                                metadata=metadata))
 
-            embed = generate_embeddings(payload["title"] + "\n" + payload["body"])
+    embed_source_unit(payloads)
 
-            if embed:
-                upsert([abs(hash(str(issue["id"])))], [payload], [embed])
 
-    except Exception as e:
-        print(e)
-        raise e
+def ingest():
+    state = State()
+
+    last_seen_dt = state.get_last_seen(SourceName, SourceName)
+    state.update_last_seen(SourceName, SourceName)
+
+    get_issues(last_seen_dt)
 
 
 if __name__ == "__main__":
-    env_file = '.env'
-
-    # We do not want to try to load .env when running as a github action
-    if os.path.exists(env_file):
-        import dotenv
-        dotenv.load_dotenv(env_file)
-
     ingest()
