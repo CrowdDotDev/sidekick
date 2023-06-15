@@ -179,6 +179,8 @@ def ingest_page(title: str,
 
     print('Ingesting', title)
 
+    source_unit_id = url
+
     def _text_from_block(block):
         out = []
         if block['type'] in block:
@@ -204,6 +206,7 @@ def ingest_page(title: str,
                                             fetch_user_data(block_last_edited_by_id))
                     payloads.append(
                         Payload(body=text_so_far,
+                                source_unit_id=source_unit_id,
                                 uri=url + (('#' + current_heading_id)
                                            if current_heading_id else ''),
                                 # Extract heading texts from the stack
@@ -211,7 +214,7 @@ def ingest_page(title: str,
                                                     current_heading_chain],
                                 created_by=created_by,
                                 last_edited_by=block_last_edited_by,
-                                source_unit_id=url,
+                                source=SourceName,
                                 fact_type=fact_type,
                                 timestamp=timestamp))
                     current_text = []
@@ -232,7 +235,7 @@ def ingest_page(title: str,
                 if text:
                     current_text.append(text)
 
-    embed_source_unit(payloads, source_unit_id=url)
+    embed_source_unit(payloads, source_unit_id=source_unit_id)
 
 
 def process_page(page_id: str,

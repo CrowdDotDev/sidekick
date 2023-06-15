@@ -101,7 +101,7 @@ def make_id(source_unit_id, text):
     return str(uuid.uuid5(uuid.NAMESPACE_X500, source_unit_id + text))
 
 
-def embed_source_unit(payloads, source_unit_id):
+def embed_source_unit(payloads, source_unit_id=None):
     """The source_unit_id is the id of the atomic source unit. If the
     source is notion, for example, the atomic source unit is the
     document, and the source_unit_id would be the document id. If the
@@ -111,7 +111,8 @@ def embed_source_unit(payloads, source_unit_id):
     q_client = qdrant.get_qdrant_client()
     C = T.get_config('qdrant')
 
-    qdrant.clean_source_unit(source_unit_id)
+    if source_unit_id is not None:
+        qdrant.clean_source_unit(source_unit_id)
 
     points = []
 
@@ -119,10 +120,11 @@ def embed_source_unit(payloads, source_unit_id):
         for text_vector in create_embeddings(payload.body):
             payload_copy = payload.copy()
             payload_copy.update({'body': text_vector['text']})
-            points.append(PointStruct(id=make_id(source_unit_id,
-                                                text_vector['text']),
-                                      vector=text_vector['vector'],
-                                      payload=payload_copy))
+            points.append(PointStruct(
+                id=make_id(source_unit_id or payload.source_unit_id,
+                           text_vector['text']),
+                vector=text_vector['vector'],
+                payload=payload_copy))
     q_client.upsert(collection_name=C['qdrant_collection'],
                     points=points)
 
