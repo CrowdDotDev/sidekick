@@ -17,6 +17,7 @@ Timeout = 15
 
 
 def get_headers():
+    T.load_dotenv()
     api_key = os.environ.get('NOTION_API_KEY', '')
     if not api_key:
         raise RuntimeError('No NOTION_API_KEY found as an environment variable')
@@ -285,21 +286,41 @@ def process_page(page_id: str,
 
 
 def ingest():
-    filterP = True
-    embed_pages(PAGES, filterP, api_key)
-    for database_id in DATABASES:
-        # Get all pages from the database and print their content
-        pages = get_all_pages(database_id, api_key)
-        embed_pages(pages, filterP, api_key)
+    sources = T.get_source_config(SourceName)
 
+    page_id_fact_types = []
+    for database in sources.get('databases', []):
+        try:
+            fact_type = FactType(database['fact_type'])
+            page_id_fact_types.extend(
+                [(page_id, fact_type) for page_id in
+                 fetch_all_pages_in_database(database['id'])]
+            )
+        except:
+            print('Error preparing database for ingestion: ' + str(database))
 
-def main():
-    T.load_dotenv()
-    build_platform_page_id = 'bff67ad3178e4156be5153981f90ab5d'
-    page_id = 'f557ddee52244b0e81d63d68f90d8333'
+    for page in sources.get('pages', []):
+        try:
+            page_id_fact_types.append((page['id'],
+                                        FactType(page['fact_type'])))
+        except:
+            print('Error preparing page for ingestion: ' + str(page))
+
     state = State()
+    for (page_id, fact_type) in page_id_fact_types:
+        process_page(page_id,
+                     ingesting_function=ingest_page,
+                     state=state,
+                     fact_type=fact_type,
+                     recurse_subpages=True,
+                     sleeping=0.5)
 
-    process_page(page_id,
+def _check_qtc():
+    # build_platform_page_id = 'bff67ad3178e4156be5153981f90ab5d'
+    cr_page_id = 'f557ddee52244b0e81d63d68f90d8333'
+
+    state = State()
+    process_page(cr_page_id,
                  ingesting_function=ingest_page,
                  state=state,
                  fact_type=FactType.historical,
@@ -308,4 +329,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    ingest()

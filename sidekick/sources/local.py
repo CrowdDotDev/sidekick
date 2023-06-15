@@ -69,7 +69,6 @@ def ingest(only_in_directory=None):
 
                     state.update_last_seen(source_name, file_path)
 
-
     return embedded_payloads
 
 
