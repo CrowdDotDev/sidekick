@@ -1,13 +1,24 @@
+# -*- coding: utf-8 -*-
+
 import os
 from datetime import datetime, timedelta
+from typing import Dict, List, Callable, Tuple
 
 import requests
-from apis.openai import generate_embeddings
-from apis.qdrant import upsert
-from tqdm import tqdm
+
+import sidekick.tools as T
+
+from sidekick.payload import Payload, FactType
+from sidekick.embed import embed_source_unit
+from sidekick.sources.state import State
 
 
-def get_activities(lastTimestamp, offset):
+SourceName = 'crowddev'
+Timeout = 15
+
+
+def get_activities(from_timestamp: datetime, offset: int = 0):
+    T.load_dotenv()
     tenant_id = os.environ.get('CROWDDEV_TENANT_ID')
     api_key = os.environ.get('CROWDDEV_API_KEY')
     if not tenant_id and api_key:
@@ -19,24 +30,29 @@ def get_activities(lastTimestamp, offset):
         "limit": 200,
         "offset": offset,
         "filter": {
-            "createdAt": {"gte": lastTimestamp},
             "timestamp": {"gte": "2022-09-01"},
         },
         "orderBy": "timestamp_DESC",
     }
+    if from_timestamp is not None:
+        payload['filter']['createdAt'] = {"gte": from_timestamp.strftime("%Y-%m-%d")}
+
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
         "authorization": f"Bearer {api_key}",
     }
 
-    response = requests.post(url, json=payload, headers=headers)
+    response = requests.post(url, json=payload, headers=headers, timeout=Timeout)
     return response.json()["rows"]
 
 
-def embed_activities(lastTimestamp, start_offset=0):
-    offset = start_offset
-    rows = get_activities(lastTimestamp, start_offset)
+def ingest_activities(activities: List[Dict]):
+    payloads = []
+
+
+def embed_activities(from_timestamp):
+    rows = get_activities(lastTimestamp, start_offset=0)
     while len(rows) > 0:
         for row in tqdm(rows, total=len(rows)):
             payload = {
@@ -60,6 +76,8 @@ def embed_activities(lastTimestamp, start_offset=0):
 
 
 def ingest():
+    state = State()
+
     DATE = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     # DATE = (datetime.now() - timedelta(days=17)).strftime('%Y-%m-%d')
     embed_activities(DATE, start_offset=0)
