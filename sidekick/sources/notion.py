@@ -16,7 +16,7 @@ Timeout = 15
 
 
 def get_headers():
-    T.load_dotenv()
+    T.load_environment()
     api_key = os.environ.get('NOTION_API_KEY', '')
     if not api_key:
         raise RuntimeError('No NOTION_API_KEY found as an environment variable')

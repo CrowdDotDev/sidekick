@@ -34,9 +34,7 @@ def get_source_config(source_name: str,
                             if path and os.path.isfile(path)), None)
 
         if config_path is None:
-            if 'pytest' in sys.argv[0]:
-                return {}
-            raise FileNotFoundError('No sources configuration file found.')
+            return default
 
         with open(config_path, 'r', encoding='utf-8') as f:
             SourceConfig = json.load(f)
@@ -81,7 +79,7 @@ def get_config(section: str) -> Dict:
 
 
 def load_environment():
-    load_dotenv('.env.testing' if 'pytest' in sys.argv[0] else '.env')
+    load_dotenv('.env.test' if 'pytest' in sys.argv[0] else '.env')
 
 
 def timestamp_as_utc(timestamp: Union[datetime.datetime, str] = None) -> datetime.datetime:

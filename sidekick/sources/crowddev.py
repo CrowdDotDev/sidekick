@@ -15,7 +15,7 @@ SourceName = 'crowddev'
 
 
 def get_activities(from_timestamp: datetime, offset: int = 0):
-    T.load_dotenv()
+    T.load_environment()
     tenant_id = os.environ.get('CROWDDEV_TENANT_ID')
     api_key = os.environ.get('CROWDDEV_API_KEY')
     if not tenant_id and api_key:

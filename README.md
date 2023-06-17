@@ -4,67 +4,135 @@ Sidekick is a GPT-powered information retrieval system that embeds pieces of inf
 
 ## Running and configuration
 
-### Configuration options
+Sidekick tries to load environment variables from `.env`, or `.env.test` when run by `pytest`.
+
+### Main configuration options
 
 Sidekick uses a `config.ini` file for most configuration options. You can provide this file in one of three ways:
 
 1. Place it in the root of the repository.
-2. Set the `SIDEKICK_CONFIG` environment variable to the path of your `config.ini` file.
+2. Set the `SIDEKICK_CONFIG` environment variable.
 3. Place it in `~/.sidekick/config.ini`.
 
 Here is an example of a `config.ini` file:
 
 ```ini
+[state]
+last_seen_db = res/test/last-seen.json
+
 [qdrant]
-QDRANT_COLLECTION = sidekick
-QDRANT_LOCAL_DB = res/test/local.qdrant
-# If QDRANT_HOST is defined it will use it instead of the local db
-# QDRANT_HOST =
+qdrant_collection = sidekick
+qdrant_local_db = res/test/local.qdrant
+qdrant_suid_field = source_unit_id
+qdrant_text_field = text
+
+# if QDRANT_URL is defined it will use that
+# qdrant_url =
+
 [openai]
-OAI_EMBEDDING_DIMENSIONS = 1536
-OAI_EMBEDDING_MODEL = text-embedding-ada-002
-OAI_EMBEDDING_CTX_LENGTH = 8191
-OAI_EMBEDDING_ENCODING = cl100k_base
-OAI_EMBEDDING_CHUNK_SIZE = 200
-OAI_MAX_TEXTS_TO_EMBED_BATCH_SIZE = 100
+oai_embedding_dimensions = 1536
+oai_embedding_model = text-embedding-ada-002
+oai_embedding_ctx_length = 8191
+oai_embedding_encoding = cl100k_base
+oai_embedding_chunk_size = 400
+oai_max_texts_to_embed_batch_size = 100
+oai_n_chunks_for_context = 8
+oai_model = gpt-3.5-turbo
+oai_system_prompt = res/system-prompt.txt
 ```
 
-### Environment variables
+### Configuration of sources
 
-Some environment variables are always needed:
+Sidekick can import data from several sources. They are configured with a json file. You can provide it in one of three different ways:
 
-- `OPENAI_API_KEY`
-- `QDRANT_API_KEY`
+1. Place a `sources.json` file in the root of the repository.
+2. Set the `SIDEKICK_SOURCES_CONFIG` environment variable.
+3. Place it in `~/.sidekick/sources.json`.
 
-#### Running the Slack bot
+The sources definition looks like this:
+
+```json
+{
+  "notion": {
+    "databases": [
+      {
+        "id": "482...",
+        "doc": "Shared notes",
+        "fact_type": "reference"
+      },
+      {
+        "id": "fe8...",
+        "doc": "User research notes",
+        "fact_type": "historical"
+      }
+    ],
+    "pages": [
+      {
+        "id": "c50...",
+        "doc": "Project A documentation",
+        "fact_type": "reference"
+      },
+      {
+        "id": "e487...",
+        "doc": "Meeting notes",
+        "fact_type": "historical"
+      }
+    ]
+  },
+  "local": [
+    {
+      "directory": "res/test/local",
+      "extensions": ["md", "org", "txt"],
+      "author": "unknown",
+      "fact_type": "reference"
+    },
+    {
+      "directory": "res/test/local/short",
+      "author": "John Doe",
+      "fact_type": "historical"
+    }
+  ]
+}
+
+```
+
+### Access to the OpenAI API
+
+The environment variable `OPENAI_API_KEY` is always required.
+
+### Embedding database API
+
+Embeddings are stored by default in a [Qdrant database](https://qdrant.tech).  If you have defined the `qdrant_local_db` configuration option it will use a (very slow) local database.  Otherwise you should define the `qdrant_url` option pointint to the endpoint of your database, and the environment variable `QDRANT_API_KEY`.
+
+### Running the Slack bot
 
 To run the Slack bot, create your own app using the manifest (in the code). Then install your app in the workspace, and add the following environment variables:
 
 - `SLACK_BOT_TOKEN`
 - `SLACK_APP_TOKEN`
 
-Then run `bot.py`.
+Then run `sidekick/slackbot.py`.
 
-#### Ingesting data
+### Ingesting data
 
 To get data from Slack (through [crowd.dev](https://crowd.dev)), add the following environment variables:
 
 - `CROWDDEV_TENANT_ID`
 - `CROWDDEV_API_KEY`
 
-and run `crowddev.py`.
+and run `sidekick/sources/crowddev.py`.
 
 To get data from Notion, add the following environment variable:
 
 - `NOTION_API_KEY`
 
-and run `notion.py`.
+and run `sidekick/sources/notion.py`.
 
-To get data from Linear, add the following environment variable:
+To get data from [Linear](https://linear.app), add the following environment variable:
 
 - `LINEAR_API_KEY`
 
-and run `linear.py`.
+and run `sidekick/sources/linear.py`.
 
 ## Dev
 

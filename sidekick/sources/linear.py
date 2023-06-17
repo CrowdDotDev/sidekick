@@ -18,7 +18,7 @@ SourceName = 'linear'
 def get_issues(from_timestamp: datetime,
                cursor: str = None,
                page_size: int = 50):
-    T.load_dotenv()
+    T.load_environment()
 
     # TODO Should we add the title to the parent, and use it as a heading?
     query = """
